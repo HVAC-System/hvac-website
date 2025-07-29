@@ -1,455 +1,459 @@
-export const metadata = {
-  title: "HVAC & Lighting Design Tool | Energy-Efficient Building Design",
-  description:
-    "Integrated lighting and air conditioning design tool for commercial spaces to optimize energy efficiency. Simulate daylight, calculate HVAC requirements, and ensure standards compliance.",
-  keywords: [
-    "HVAC design",
-    "lighting design",
-    "energy efficiency",
-    "building design",
-    "daylight simulation",
-    "commercial buildings",
-    "BS EN 12464-1",
-    "ISO 50001",
-    "energy optimization",
-    "architects",
-    "MEP engineers",
-    "Kenya",
-  ],
-  openGraph: {
-    title: "HVAC & Lighting Design Tool | Energy-Efficient Building Design",
-    description:
-      "Integrated lighting and air conditioning design tool for commercial spaces to optimize energy efficiency. Simulate daylight, calculate HVAC requirements, and ensure standards compliance.",
-    url: "https://hvac-design-tool.com",
-    siteName: "HVAC & Lighting Design Tool",
-    images: [
-      {
-        url: "/assets/hvac-logo.png",
-        width: 400,
-        height: 400,
-        alt: "HVAC Design Tool logo",
-      },
-    ],
-    locale: "en_US",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "HVAC & Lighting Design Tool | Energy-Efficient Building Design",
-    description:
-      "Integrated lighting and air conditioning design tool for commercial spaces to optimize energy efficiency. Simulate daylight, calculate HVAC requirements, and ensure standards compliance.",
-    images: [
-      {
-        url: "/assets/hvac-logo.png",
-        alt: "HVAC Design Tool logo",
-      },
-    ],
-  },
-};
+"use client";
+import { useState } from "react";
+
+interface FormData {
+  roomLength: string;
+  roomWidth: string;
+  roomHeight: string;
+  occupancy: string;
+  activityLevel: "office" | "retail" | "industrial" | "educational";
+  buildingType: string;
+  location: string;
+  windowArea: string;
+  windowEfficiency: string;
+}
+
+interface HVACResults {
+  coolingLoad: number;
+  heatingLoad: number;
+  hvacEnergy: number;
+  hvacCost: number;
+}
+
+interface CalculationResults {
+  area: number;
+  volume: number;
+  occupancyDensity: number;
+  totalLumens: number;
+  totalWatts: number;
+  dailyEnergy: number;
+  monthlyEnergy: number;
+  monthlyCost: number;
+  daylightFactor: number;
+  naturalLightSavings: number;
+  hvacResults: HVACResults | null;
+}
 
 export default function Home() {
+  const [showHVAC, setShowHVAC] = useState(false);
+  const [formData, setFormData] = useState<FormData>({
+    roomLength: "",
+    roomWidth: "",
+    roomHeight: "",
+    occupancy: "",
+    activityLevel: "office",
+    buildingType: "commercial",
+    location: "nairobi",
+    windowArea: "",
+    windowEfficiency: "0.8",
+  });
+
+  const [results, setResults] = useState<CalculationResults | null>(null);
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const calculateLighting = () => {
+    const {
+      roomLength,
+      roomWidth,
+      roomHeight,
+      occupancy,
+      activityLevel,
+      windowArea,
+      windowEfficiency,
+    } = formData;
+
+    if (!roomLength || !roomWidth || !roomHeight || !occupancy) {
+      alert("Please fill in all required fields");
+      return;
+    }
+
+    const area = parseFloat(roomLength) * parseFloat(roomWidth);
+    const volume = area * parseFloat(roomHeight);
+    const occupancyDensity = parseFloat(occupancy) / area;
+
+    // Lighting calculations based on BS EN 12464-1:2021
+    const lightingRequirements: Record<
+      string,
+      { lux: number; wattsPerM2: number }
+    > = {
+      office: { lux: 500, wattsPerM2: 12 },
+      retail: { lux: 300, wattsPerM2: 10 },
+      industrial: { lux: 200, wattsPerM2: 8 },
+      educational: { lux: 300, wattsPerM2: 10 },
+    };
+
+    const req =
+      lightingRequirements[activityLevel] || lightingRequirements.office;
+    const totalLumens = area * req.lux;
+    const totalWatts = area * req.wattsPerM2;
+    const dailyEnergy = totalWatts * 8; // 8 hours per day
+    const monthlyEnergy = dailyEnergy * 30;
+    const monthlyCost = monthlyEnergy * 0.15; // $0.15 per kWh
+
+    // Daylight factor calculation
+    const windowAreaNum = parseFloat(windowArea) || 0;
+    const daylightFactor =
+      windowAreaNum > 0
+        ? (windowAreaNum / area) * parseFloat(windowEfficiency) * 100
+        : 0;
+    const naturalLightSavings =
+      daylightFactor > 2 ? Math.min(daylightFactor * 0.5, 30) : 0;
+
+    // HVAC calculations if enabled
+    let hvacResults: HVACResults | null = null;
+    if (showHVAC) {
+      const coolingLoad =
+        area * 0.1 + parseFloat(occupancy) * 0.1 + totalWatts * 0.3;
+      const heatingLoad = area * 0.08 + parseFloat(occupancy) * 0.08;
+      const hvacEnergy = (coolingLoad + heatingLoad) * 8 * 30;
+      const hvacCost = hvacEnergy * 0.15;
+
+      hvacResults = {
+        coolingLoad: Math.round(coolingLoad * 100) / 100,
+        heatingLoad: Math.round(heatingLoad * 100) / 100,
+        hvacEnergy: Math.round(hvacEnergy),
+        hvacCost: Math.round(hvacCost * 100) / 100,
+      };
+    }
+
+    setResults({
+      area: Math.round(area * 100) / 100,
+      volume: Math.round(volume * 100) / 100,
+      occupancyDensity: Math.round(occupancyDensity * 100) / 100,
+      totalLumens: Math.round(totalLumens),
+      totalWatts: Math.round(totalWatts),
+      dailyEnergy: Math.round(dailyEnergy),
+      monthlyEnergy: Math.round(monthlyEnergy),
+      monthlyCost: Math.round(monthlyCost * 100) / 100,
+      daylightFactor: Math.round(daylightFactor * 100) / 100,
+      naturalLightSavings: Math.round(naturalLightSavings * 100) / 100,
+      hvacResults,
+    });
+  };
+
   return (
-    <div className="flex flex-col gap-20 items-center">
-      {/* Hero Section - Introduction */}
-      <section className="w-full flex flex-col items-center gap-12 text-center mt-12 max-w-5xl">
-        <div className="flex flex-col items-center gap-6">
-          <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg">
-            <svg
-              width="40"
-              height="40"
-              fill="none"
-              viewBox="0 0 24 24"
-              className="text-white"
-            >
-              <path
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M12 3v18m0-18a9 9 0 0 1 9 9m-9-9a9 9 0 0 0-9 9m9-9v18m0 0a9 9 0 0 0 9-9m-9 9a9 9 0 0 1-9-9"
-              />
-            </svg>
-          </div>
-          <h1 className="text-5xl font-bold text-gray-900 leading-tight">
-            HVAC & Lighting Design Tool
-          </h1>
-          <p className="text-xl text-gray-600 max-w-3xl leading-relaxed">
-            Integrated energy-efficient design for commercial spaces. Simulate
-            daylight, optimize HVAC systems, and ensure compliance with
-            international standards.
-          </p>
-          <p className="text-lg text-gray-500 max-w-4xl">
-            Designed for architects, MEP engineers, and energy consultants to
-            create sustainable, cost-effective building solutions that meet BS
-            EN 12464-1:2021, ISO 50001, and BS EN 16798-1:2019 standards.
-          </p>
+    <div className="flex flex-col gap-16 items-center">
+      {/* Hero Section - Brief Introduction */}
+      <section className="w-full flex flex-col items-center gap-8 text-center mt-8 max-w-4xl">
+        <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg">
+          <svg
+            width="32"
+            height="32"
+            fill="none"
+            viewBox="0 0 24 24"
+            className="text-white"
+          >
+            <path
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M12 3v18m0-18a9 9 0 0 1 9 9m-9-9a9 9 0 0 0-9 9m9-9v18m0 0a9 9 0 0 0 9-9m-9 9a9 9 0 0 1-9-9"
+            />
+          </svg>
         </div>
-
-        {/* Key Benefits */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full mt-8">
-          <div className="card p-8 text-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
-              <svg
-                width="32"
-                height="32"
-                fill="none"
-                viewBox="0 0 24 24"
-                className="text-white"
-              >
-                <path
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-                />
-              </svg>
-            </div>
-            <h3 className="font-semibold text-xl mb-3 text-gray-900">
-              Daylight Simulation
-            </h3>
-            <p className="text-gray-600 leading-relaxed">
-              Analyze natural lighting patterns and optimize building
-              orientation for maximum energy efficiency.
-            </p>
-          </div>
-
-          <div className="card p-8 text-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-green-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
-              <svg
-                width="32"
-                height="32"
-                fill="none"
-                viewBox="0 0 24 24"
-                className="text-white"
-              >
-                <path
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M13 10V3L4 14h7v7l9-11h-7z"
-                />
-              </svg>
-            </div>
-            <h3 className="font-semibold text-xl mb-3 text-gray-900">
-              Energy Optimization
-            </h3>
-            <p className="text-gray-600 leading-relaxed">
-              Calculate thermal loads and optimize HVAC systems for reduced
-              energy consumption and costs.
-            </p>
-          </div>
-
-          <div className="card p-8 text-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
-              <svg
-                width="32"
-                height="32"
-                fill="none"
-                viewBox="0 0 24 24"
-                className="text-white"
-              >
-                <path
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-            <h3 className="font-semibold text-xl mb-3 text-gray-900">
-              Standards Compliance
-            </h3>
-            <p className="text-gray-600 leading-relaxed">
-              Ensure your designs meet international standards for lighting and
-              energy efficiency.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Lighting Design Tool Section */}
-      <section className="w-full bg-gray-50 py-16 px-6 rounded-3xl max-w-7xl">
-        <div className="flex flex-col lg:flex-row gap-12 items-center">
-          <div className="flex-1">
-            <h2 className="text-4xl font-bold text-gray-900 mb-6">
-              Lighting Design Tool
-            </h2>
-            <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-              Design optimal lighting systems that integrate natural daylight
-              with artificial lighting. Our tool helps you create
-              energy-efficient lighting solutions that meet BS EN 12464-1:2021
-              standards.
-            </p>
-
-            <div className="space-y-4 mb-8">
-              <div className="flex items-start gap-4">
-                <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                  <svg
-                    width="12"
-                    height="12"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    className="text-white"
-                  >
-                    <path
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                </div>
-                <p className="text-gray-700 text-lg">
-                  Daylight factor analysis and natural light optimization
-                </p>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                  <svg
-                    width="12"
-                    height="12"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    className="text-white"
-                  >
-                    <path
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                </div>
-                <p className="text-gray-700 text-lg">
-                  LED lighting system design and placement optimization
-                </p>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                  <svg
-                    width="12"
-                    height="12"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    className="text-white"
-                  >
-                    <path
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                </div>
-                <p className="text-gray-700 text-lg">
-                  Energy consumption calculations and cost analysis
-                </p>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                  <svg
-                    width="12"
-                    height="12"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    className="text-white"
-                  >
-                    <path
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                </div>
-                <p className="text-gray-700 text-lg">
-                  Standards compliance checking and reporting
-                </p>
-              </div>
-            </div>
-
-            <button className="btn btn-primary text-lg px-8 py-4">
-              Try Lighting Tool
-            </button>
-          </div>
-
-          <div className="flex-1 flex justify-center">
-            <div className="w-96 h-96 bg-gradient-to-br from-amber-400 to-orange-500 rounded-3xl shadow-2xl flex items-center justify-center">
-              <svg
-                width="140"
-                height="140"
-                fill="none"
-                viewBox="0 0 24 24"
-                className="text-white"
-              >
-                <path
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* HVAC Design Tool Section */}
-      <section className="w-full bg-white py-16 px-6 rounded-3xl max-w-7xl border border-gray-200 shadow-sm">
-        <div className="flex flex-col lg:flex-row-reverse gap-12 items-center">
-          <div className="flex-1">
-            <h2 className="text-4xl font-bold text-gray-900 mb-6">
-              HVAC Design Tool
-            </h2>
-            <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-              Calculate thermal loads and design efficient HVAC systems that
-              work in harmony with your lighting design. Optimize for energy
-              efficiency and cost savings while ensuring comfort.
-            </p>
-
-            <div className="space-y-4 mb-8">
-              <div className="flex items-start gap-4">
-                <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                  <svg
-                    width="12"
-                    height="12"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    className="text-white"
-                  >
-                    <path
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                </div>
-                <p className="text-gray-700 text-lg">
-                  Thermal load calculations and system sizing
-                </p>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                  <svg
-                    width="12"
-                    height="12"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    className="text-white"
-                  >
-                    <path
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                </div>
-                <p className="text-gray-700 text-lg">
-                  Energy efficiency analysis and optimization
-                </p>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                  <svg
-                    width="12"
-                    height="12"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    className="text-white"
-                  >
-                    <path
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                </div>
-                <p className="text-gray-700 text-lg">
-                  Integration with lighting system design
-                </p>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                  <svg
-                    width="12"
-                    height="12"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    className="text-white"
-                  >
-                    <path
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                </div>
-                <p className="text-gray-700 text-lg">
-                  Cost-benefit analysis and ROI calculations
-                </p>
-              </div>
-            </div>
-
-            <button className="btn btn-primary text-lg px-8 py-4">
-              Try HVAC Tool
-            </button>
-          </div>
-
-          <div className="flex-1 flex justify-center">
-            <div className="w-96 h-96 bg-gradient-to-br from-emerald-400 to-green-500 rounded-3xl shadow-2xl flex items-center justify-center">
-              <svg
-                width="140"
-                height="140"
-                fill="none"
-                viewBox="0 0 24 24"
-                className="text-white"
-              >
-                <path
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M13 10V3L4 14h7v7l9-11h-7z"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Call to Action */}
-      <section className="w-full text-center py-16 bg-gradient-to-r from-emerald-600 to-teal-600 rounded-3xl text-white">
-        <h2 className="text-4xl font-bold mb-6">
-          Ready to Design Energy-Efficient Buildings?
-        </h2>
-        <p className="text-xl mb-10 max-w-3xl mx-auto leading-relaxed">
-          Start your integrated lighting and HVAC design project today. Create
-          sustainable, cost-effective solutions that meet international
-          standards.
+        <h1 className="text-4xl font-bold text-gray-900">
+          HVAC & Lighting Design Tool
+        </h1>
+        <p className="text-lg text-gray-600 max-w-2xl">
+          Calculate lighting requirements and energy efficiency for commercial
+          spaces. Optional HVAC integration for complete building analysis.
         </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <button className="btn bg-white text-emerald-600 hover:bg-gray-100 text-lg px-8 py-4 font-semibold">
-            Get Started Now
-          </button>
-          <button className="btn border-2 border-white text-white hover:bg-white hover:text-emerald-600 text-lg px-8 py-4 font-semibold">
-            Learn More
-          </button>
+      </section>
+
+      {/* Lighting Design Tool */}
+      <section className="w-full max-w-6xl bg-white rounded-2xl shadow-lg border border-gray-200 p-8">
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="text-3xl font-bold text-gray-900">
+            Lighting Design Tool
+          </h2>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+              <input
+                type="checkbox"
+                checked={showHVAC}
+                onChange={(e) => setShowHVAC(e.target.checked)}
+                className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+              />
+              Include HVAC Calculations
+            </label>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Input Form */}
+          <div className="space-y-6">
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">
+              Building Parameters
+            </h3>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Room Length (m)
+                </label>
+                <input
+                  type="number"
+                  name="roomLength"
+                  value={formData.roomLength}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  placeholder="10"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Room Width (m)
+                </label>
+                <input
+                  type="number"
+                  name="roomWidth"
+                  value={formData.roomWidth}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  placeholder="8"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Room Height (m)
+                </label>
+                <input
+                  type="number"
+                  name="roomHeight"
+                  value={formData.roomHeight}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  placeholder="3"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Occupancy
+                </label>
+                <input
+                  type="number"
+                  name="occupancy"
+                  value={formData.occupancy}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  placeholder="20"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Activity Level
+              </label>
+              <select
+                name="activityLevel"
+                value={formData.activityLevel}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              >
+                <option value="office">Office</option>
+                <option value="retail">Retail</option>
+                <option value="industrial">Industrial</option>
+                <option value="educational">Educational</option>
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Window Area (m²)
+                </label>
+                <input
+                  type="number"
+                  name="windowArea"
+                  value={formData.windowArea}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  placeholder="12"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Window Efficiency
+                </label>
+                <select
+                  name="windowEfficiency"
+                  value={formData.windowEfficiency}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                >
+                  <option value="0.6">60% (Single Glazed)</option>
+                  <option value="0.8">80% (Double Glazed)</option>
+                  <option value="0.9">90% (Triple Glazed)</option>
+                </select>
+              </div>
+            </div>
+
+            <button
+              onClick={calculateLighting}
+              className="w-full bg-emerald-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-colors"
+            >
+              Calculate Design
+            </button>
+          </div>
+
+          {/* Results Display */}
+          <div className="space-y-6">
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">
+              Results
+            </h3>
+
+            {results ? (
+              <div className="space-y-4">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h4 className="font-semibold text-gray-900 mb-3">
+                    Space Analysis
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600">Floor Area:</span>
+                      <span className="float-right font-medium">
+                        {results.area} m²
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Volume:</span>
+                      <span className="float-right font-medium">
+                        {results.volume} m³
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Occupancy Density:</span>
+                      <span className="float-right font-medium">
+                        {results.occupancyDensity} people/m²
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <h4 className="font-semibold text-gray-900 mb-3">
+                    Lighting Requirements
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600">Total Lumens:</span>
+                      <span className="float-right font-medium">
+                        {results.totalLumens.toLocaleString()}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Total Watts:</span>
+                      <span className="float-right font-medium">
+                        {results.totalWatts} W
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Daily Energy:</span>
+                      <span className="float-right font-medium">
+                        {results.dailyEnergy} kWh
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Monthly Cost:</span>
+                      <span className="float-right font-medium">
+                        ${results.monthlyCost}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-amber-50 rounded-lg p-4">
+                  <h4 className="font-semibold text-gray-900 mb-3">
+                    Daylight Analysis
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600">Daylight Factor:</span>
+                      <span className="float-right font-medium">
+                        {results.daylightFactor}%
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Energy Savings:</span>
+                      <span className="float-right font-medium">
+                        {results.naturalLightSavings}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {showHVAC && results.hvacResults && (
+                  <div className="bg-emerald-50 rounded-lg p-4">
+                    <h4 className="font-semibold text-gray-900 mb-3">
+                      HVAC Analysis
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-600">Cooling Load:</span>
+                        <span className="float-right font-medium">
+                          {results.hvacResults.coolingLoad} kW
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Heating Load:</span>
+                        <span className="float-right font-medium">
+                          {results.hvacResults.heatingLoad} kW
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Monthly Energy:</span>
+                        <span className="float-right font-medium">
+                          {results.hvacResults.hvacEnergy} kWh
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Monthly Cost:</span>
+                        <span className="float-right font-medium">
+                          ${results.hvacResults.hvacCost}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="bg-gray-50 rounded-lg p-8 text-center">
+                <svg
+                  width="48"
+                  height="48"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  className="mx-auto mb-4 text-gray-400"
+                >
+                  <path
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <p className="text-gray-500">
+                  Enter building parameters and click &quot;Calculate
+                  Design&quot; to see results
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </section>
     </div>
