@@ -3,10 +3,8 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "com.kadengeyaa.nikela",
-      "sha256_cert_fingerprints": [
-        "A0:83:AC:27:50:D1:C2:C8:35:AC:70:FE:96:9F:8A:7D:45:C2:63:6F:96:67:90:61:3F:3A:60:85:98:AD:94:CA"
-      ]
+      "package_name": "com.kadengeyaa.hvac",
+      "sha256_cert_fingerprints": []
     }
   }
 ]
