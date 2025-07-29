@@ -1,0 +1,24 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Linting & Formatting Rules
+
+- Use **ESLint** for JavaScript/TypeScript linting
+  - Extend from `next/core-web-vitals`, `eslint:recommended`, and `plugin:@typescript-eslint/recommended`
+  - Use plugins: `@typescript-eslint`, `react`, `react-hooks`, `jsx-a11y`, `import`, `prettier`
+# Linting & Formatting Rules
+
+- Use **ESLint** for all JavaScript/TypeScript files.
+  - Extend from `next/core-web-vitals`, `eslint:recommended`, and `plugin:@typescript-eslint/recommended`.
+  - Use plugins: `@typescript-eslint`, `react`, `react-hooks`, `jsx-a11y`, `import`, `prettier`.
+  - Enforce import order: built-in, external, internal, sibling, index (use `eslint-plugin-import`).
+  - Disallow unused imports and variables.
+  - Enforce TypeScript strictness (`strict: true` in `tsconfig.json`).
+- Use **Prettier** for code formatting.
+  - Enforce: single quotes for strings, no semicolons except where required, trailing commas in multiline, max line length 80.
+- Use **Husky** and **lint-staged** for pre-commit hooks to run linting and formatting.
+- All code must pass linting and formatting checks before merging.
+- Place ESLint and Prettier configs at the project root (`.eslintrc.js`, `.prettierrc`).
+- Use editor extensions to auto-format on save. 

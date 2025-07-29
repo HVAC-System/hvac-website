@@ -1,0 +1,19 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [],
+        "components": [
+          {
+            "/": "/*",
+            "exclude": true,
+            "comment": "Exclude all other paths from universal links"
+          }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": []
+  }
+}

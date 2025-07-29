@@ -1,0 +1,22 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Accessibility (a11y) Rules
+
+- Use semantic HTML for all content
+- Apply accurate ARIA attributes and roles where needed
+- Ensure full keyboard navigation support
+# Accessibility (a11y) Rules
+
+- Use semantic HTML for all content and structure.
+- Apply accurate ARIA attributes and roles where needed (refer to WAI-ARIA spec).
+- Ensure full keyboard navigation support (all interactive elements must be focusable and usable via keyboard).
+- Manage focus order and visibility (use focus traps and visible focus indicators).
+- Maintain accessible color contrast ratios (WCAG AA or better).
+- Follow a logical heading hierarchy (no skipped heading levels).
+- All interactive elements must be accessible by screen readers.
+- Error messages must be programmatically associated with form fields and announced by screen readers.
+- Use axe-core and Lighthouse in CI to check accessibility; fail builds on critical issues.
+- Test focus management and tab order in all interactive flows. 

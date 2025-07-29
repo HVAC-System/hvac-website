@@ -1,0 +1,22 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Testing Rules & Best Practices
+
+- Use **Jest** for unit and integration testing
+- Use **React Testing Library** for React component tests
+- Place test files in `__tests__` directories or alongside components as `.test.tsx`/`.test.ts`
+# Testing Rules & Best Practices
+
+- Use **Jest** for unit and integration testing
+- Use **React Testing Library** for React component tests
+- Place test files in `__tests__` directories or alongside components as `.test.tsx`/`.test.ts`
+- Name test files after the component or function they test
+- Mock external dependencies (e.g., API calls, third-party libraries) using Jest mocks or MSW
+- Follow Arrange-Act-Assert pattern in tests (e.g., 'Arrange: setup, Act: execute, Assert: check result')
+- Use snapshot testing only for stable, low-change UI components
+- Require at least 80% code coverage for all new code (enforced in CI)
+- Run all tests in CI before merging
+- Use `jest.setup.js` for global mocks and setup 
