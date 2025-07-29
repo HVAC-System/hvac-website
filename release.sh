@@ -111,7 +111,7 @@ git tag -d "v$new_version" 2>/dev/null || true
 git tag -a "v$new_version" -m "Release v$new_version"
 
 # Push changes and tags to remote so CI/CD and GitHub Actions are triggered
-git push origin main develop --tags
+git push origin master develop --tags
 
 # Always checkout develop branch at the end
 git checkout develop
