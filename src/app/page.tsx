@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Image from "next/image";
 
 interface FormData {
   roomLength: string;
@@ -144,22 +145,15 @@ export default function Home() {
     <div className="flex flex-col gap-16 items-center">
       {/* Hero Section - Brief Introduction */}
       <section className="w-full flex flex-col items-center gap-8 text-center mt-8 max-w-4xl">
-        <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg">
-          <svg
-            width="32"
-            height="32"
-            fill="none"
-            viewBox="0 0 24 24"
-            className="text-white"
-          >
-            <path
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M12 3v18m0-18a9 9 0 0 1 9 9m-9-9a9 9 0 0 0-9 9m9-9v18m0 0a9 9 0 0 0 9-9m-9 9a9 9 0 0 1-9-9"
-            />
-          </svg>
+        <div className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg p-2">
+          <Image
+            src="/logo.png"
+            alt="HVAC Design Tool Logo"
+            width={48}
+            height={48}
+            className="rounded-lg"
+            priority
+          />
         </div>
         <h1 className="text-4xl font-bold text-gray-900">
           HVAC & Lighting Design Tool
