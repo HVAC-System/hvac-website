@@ -1,0 +1,18 @@
+services:
+  nikela-website:
+    image: ghcr.io/nikelakenya/nikela-website:latest
+    restart: always
+    ports:
+      - "80:3000" # Expose on port 80, container listens on 3000
+    environment:
+      NODE_ENV: production
+      # Add any other environment variables your app needs here
+      # DATABASE_URL: "your-database-url"
+      # API_KEY: "your-api-key"
+    # Uncomment if you need to pass secrets as files
+    # secrets:
+    #   my_secret
+# Uncomment and configure if you use secrets
+# secrets:
+#   my_secret:
+#     file: ./my_secret.txt

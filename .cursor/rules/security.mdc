@@ -1,0 +1,22 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Security Rules
+
+- Sanitize all user input to prevent XSS and injection attacks
+- Use DOMPurify for sanitizing HTML content
+- Store secrets and sensitive config in environment variables (`.env*` files)
+# Security Rules
+
+- Sanitize all user input to prevent XSS and injection attacks
+- Use DOMPurify for sanitizing HTML content
+- Store secrets and sensitive config in environment variables (`.env*` files)
+- Never commit secrets or credentials to version control
+- Use JWT or OAuth2 for API authentication; restrict access to sensitive endpoints by user role
+- Secure API routes with authentication and input validation (use Zod or similar for validation)
+- Use HTTPS in all environments (enforce in production with redirects and HSTS)
+- Set secure HTTP headers: Content-Security-Policy, X-Frame-Options, X-Content-Type-Options, Referrer-Policy
+- Keep all dependencies up to date and monitor for vulnerabilities (use npm audit in CI)
+- Validate and sanitize all data received from external sources (use DOMPurify for HTML) 

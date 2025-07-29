@@ -1,0 +1,47 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "DC8FJG78XV.com.kadengeyaa.nikela"
+        ],
+        "components": [
+          {
+            "/": "/user/*",
+            "comment": "Universal links for user pages"
+          },
+          {
+            "/": "/group/*",
+            "comment": "Universal links for group pages"
+          },
+          {
+            "/": "/item/*",
+            "comment": "Universal links for item pages"
+          },
+          {
+            "/": "/section/*",
+            "comment": "Universal links for section pages"
+          },
+          {
+            "/": "/storys/*",
+            "comment": "Universal links for story pages"
+          },
+          {
+            "/": "/shop/*",
+            "comment": "Universal links for shop pages"
+          },
+          {
+            "/": "/*",
+            "exclude": true,
+            "comment": "Exclude all other paths from universal links"
+          }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": [
+      "DC8FJG78XV.com.kadengeyaa.nikela"
+    ]
+  }
+}

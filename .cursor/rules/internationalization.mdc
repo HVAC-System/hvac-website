@@ -1,0 +1,21 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Internationalization (i18n) Rules
+
+- Use next-i18next for translations and locale management
+- Store translation files in `/public/locales/{locale}/{namespace}.json`
+- Implement automatic locale detection and redirection
+# Internationalization (i18n) Rules
+
+- Use next-i18next for translations and locale management
+- Store translation files in `/public/locales/{locale}/{namespace}.json`
+- Implement automatic locale detection and redirection
+- Use proper number, date, and currency formatting for each locale (use Intl API)
+- Support right-to-left (RTL) languages; test all layouts in RTL mode
+- Use descriptive translation keys (e.g., 'login.button.submit', not 'btn1' or raw text)
+- Organize translation files by namespace and language
+- Test all supported languages for layout, content, and pluralization using i18n test utilities
+- Use pluralization and interpolation features of i18n library in all dynamic text 
