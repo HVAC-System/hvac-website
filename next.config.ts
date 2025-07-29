@@ -1,18 +1,22 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  // Optimized for Vercel deployment
+  experimental: {
+    optimizePackageImports: ["react", "react-dom"],
+  },
   images: {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "api.nikela.app",
+        hostname: "**",
       },
-      // add other allowed remote patterns here if needed
     ],
   },
-  // Allow cross-origin requests in development
-  allowedDevOrigins: ["192.168.100.184", "localhost", "127.0.0.1"],
+  // Performance optimizations
+  compress: true,
+  poweredByHeader: false,
+  generateEtags: false,
 };
 
 export default nextConfig;
