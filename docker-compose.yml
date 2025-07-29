@@ -1,6 +1,6 @@
 services:
   # Production service
-  nikela-website:
+  hvac-design-tool:
     build:
       context: .
       dockerfile: Dockerfile
