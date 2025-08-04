@@ -392,7 +392,7 @@ export default function Home() {
                 >
                   {lampOptions.map((lamp) => (
                     <option key={lamp.name} value={lamp.lumens}>
-                      {lamp.name}
+                      {lamp.name} ({lamp.lumens} lumens)
                     </option>
                   ))}
                 </select>
