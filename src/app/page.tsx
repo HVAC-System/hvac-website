@@ -5,11 +5,9 @@ import Image from "next/image";
 interface LightingFormData {
   roomLength: string;
   roomWidth: string;
-  roomHeight: string;
-  occupancy: string;
-  activityLevel: "office" | "retail" | "industrial" | "educational";
-  windowArea: string;
-  windowEfficiency: string;
+  utilizationFactor: string;
+  maintenanceFactor: string;
+  selectedLamp: string;
 }
 
 interface HVACFormData {
@@ -18,22 +16,15 @@ interface HVACFormData {
   roomHeight: string;
   occupancy: string;
   buildingType: "commercial" | "residential" | "industrial";
-  location: string;
   insulationLevel: "poor" | "average" | "good" | "excellent";
   climateZone: "tropical" | "temperate" | "cold";
 }
 
 interface LightingResults {
   area: number;
-  volume: number;
-  occupancyDensity: number;
+  recommendedFlux: number;
+  numberOfLamps: number;
   totalLumens: number;
-  totalWatts: number;
-  dailyEnergy: number;
-  monthlyEnergy: number;
-  monthlyCost: number;
-  daylightFactor: number;
-  naturalLightSavings: number;
 }
 
 interface HVACResults {
@@ -49,17 +40,28 @@ interface HVACResults {
 
 type ActiveTab = "lighting" | "hvac";
 
+// Lamp options with different lumen outputs
+const lampOptions = [
+  { name: "LED Bulb 9W", lumens: 800 },
+  { name: "LED Bulb 12W", lumens: 1100 },
+  { name: "LED Bulb 15W", lumens: 1400 },
+  { name: "LED Tube 18W", lumens: 1800 },
+  { name: "LED Tube 24W", lumens: 2400 },
+  { name: "LED Panel 30W", lumens: 3000 },
+  { name: "LED Panel 40W", lumens: 4000 },
+  { name: "LED High Bay 100W", lumens: 12000 },
+  { name: "LED High Bay 150W", lumens: 18000 },
+];
+
 export default function Home() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("lighting");
 
   const [lightingFormData, setLightingFormData] = useState<LightingFormData>({
     roomLength: "",
     roomWidth: "",
-    roomHeight: "",
-    occupancy: "",
-    activityLevel: "office",
-    windowArea: "",
-    windowEfficiency: "0.8",
+    utilizationFactor: "0.7",
+    maintenanceFactor: "0.8",
+    selectedLamp: "800",
   });
 
   const [hvacFormData, setHVACFormData] = useState<HVACFormData>({
@@ -68,7 +70,6 @@ export default function Home() {
     roomHeight: "",
     occupancy: "",
     buildingType: "commercial",
-    location: "nairobi",
     insulationLevel: "average",
     climateZone: "tropical",
   });
@@ -101,61 +102,38 @@ export default function Home() {
     const {
       roomLength,
       roomWidth,
-      roomHeight,
-      occupancy,
-      activityLevel,
-      windowArea,
-      windowEfficiency,
+      utilizationFactor,
+      maintenanceFactor,
+      selectedLamp,
     } = lightingFormData;
 
-    if (!roomLength || !roomWidth || !roomHeight || !occupancy) {
-      alert("Please fill in all required fields");
+    if (!roomLength || !roomWidth) {
+      alert("Please fill in room length and width");
       return;
     }
 
     const area = parseFloat(roomLength) * parseFloat(roomWidth);
-    const volume = area * parseFloat(roomHeight);
-    const occupancyDensity = parseFloat(occupancy) / area;
+    const UF = parseFloat(utilizationFactor);
+    const MF = parseFloat(maintenanceFactor);
 
-    // Lighting calculations based on BS EN 12464-1:2021
-    const lightingRequirements: Record<
-      string,
-      { lux: number; wattsPerM2: number }
-    > = {
-      office: { lux: 500, wattsPerM2: 12 },
-      retail: { lux: 300, wattsPerM2: 10 },
-      industrial: { lux: 200, wattsPerM2: 8 },
-      educational: { lux: 300, wattsPerM2: 10 },
-    };
+    // Using office illuminance as default (500 lux)
+    const E = 500; // lux
 
-    const req =
-      lightingRequirements[activityLevel] || lightingRequirements.office;
-    const totalLumens = area * req.lux;
-    const totalWatts = area * req.wattsPerM2;
-    const dailyEnergy = totalWatts * 8; // 8 hours per day
-    const monthlyEnergy = dailyEnergy * 30;
-    const monthlyCost = monthlyEnergy * 0.15; // $0.15 per kWh
+    // Calculate recommended flux using the formula: F = E * A / (UF * MF)
+    const recommendedFlux = (E * area) / (UF * MF);
 
-    // Daylight factor calculation
-    const windowAreaNum = parseFloat(windowArea) || 0;
-    const daylightFactor =
-      windowAreaNum > 0
-        ? (windowAreaNum / area) * parseFloat(windowEfficiency) * 100
-        : 0;
-    const naturalLightSavings =
-      daylightFactor > 2 ? Math.min(daylightFactor * 0.5, 30) : 0;
+    // Get selected lamp lumens
+    const lampLumens = parseInt(selectedLamp);
+
+    // Calculate number of lamps needed
+    const numberOfLamps = Math.ceil(recommendedFlux / lampLumens);
+    const totalLumens = numberOfLamps * lampLumens;
 
     setLightingResults({
       area: Math.round(area * 100) / 100,
-      volume: Math.round(volume * 100) / 100,
-      occupancyDensity: Math.round(occupancyDensity * 100) / 100,
-      totalLumens: Math.round(totalLumens),
-      totalWatts: Math.round(totalWatts),
-      dailyEnergy: Math.round(dailyEnergy),
-      monthlyEnergy: Math.round(monthlyEnergy),
-      monthlyCost: Math.round(monthlyCost * 100) / 100,
-      daylightFactor: Math.round(daylightFactor * 100) / 100,
-      naturalLightSavings: Math.round(naturalLightSavings * 100) / 100,
+      recommendedFlux: Math.round(recommendedFlux),
+      numberOfLamps: numberOfLamps,
+      totalLumens: totalLumens,
     });
   };
 
@@ -166,7 +144,6 @@ export default function Home() {
       roomHeight,
       occupancy,
       buildingType,
-      location,
       insulationLevel,
       climateZone,
     } = hvacFormData;
@@ -332,78 +309,48 @@ export default function Home() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Room Height (m)
+                    Utilization Factor (UF)
                   </label>
                   <input
                     type="number"
-                    name="roomHeight"
-                    value={lightingFormData.roomHeight}
+                    name="utilizationFactor"
+                    value={lightingFormData.utilizationFactor}
                     onChange={handleLightingInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    placeholder="3"
+                    placeholder="0.7"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Occupancy
+                    Maintenance Factor (MF)
                   </label>
                   <input
                     type="number"
-                    name="occupancy"
-                    value={lightingFormData.occupancy}
+                    name="maintenanceFactor"
+                    value={lightingFormData.maintenanceFactor}
                     onChange={handleLightingInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    placeholder="20"
+                    placeholder="0.8"
                   />
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Activity Level
+                  Selected Lamp
                 </label>
                 <select
-                  name="activityLevel"
-                  value={lightingFormData.activityLevel}
+                  name="selectedLamp"
+                  value={lightingFormData.selectedLamp}
                   onChange={handleLightingInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 >
-                  <option value="office">Office</option>
-                  <option value="retail">Retail</option>
-                  <option value="industrial">Industrial</option>
-                  <option value="educational">Educational</option>
+                  {lampOptions.map((lamp) => (
+                    <option key={lamp.name} value={lamp.lumens}>
+                      {lamp.name}
+                    </option>
+                  ))}
                 </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Window Area (m²)
-                  </label>
-                  <input
-                    type="number"
-                    name="windowArea"
-                    value={lightingFormData.windowArea}
-                    onChange={handleLightingInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    placeholder="12"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Window Efficiency
-                  </label>
-                  <select
-                    name="windowEfficiency"
-                    value={lightingFormData.windowEfficiency}
-                    onChange={handleLightingInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                  >
-                    <option value="0.6">60% (Single Glazed)</option>
-                    <option value="0.8">80% (Double Glazed)</option>
-                    <option value="0.9">90% (Triple Glazed)</option>
-                  </select>
-                </div>
               </div>
 
               <button
@@ -434,17 +381,21 @@ export default function Home() {
                         </span>
                       </div>
                       <div>
-                        <span className="text-gray-600">Volume:</span>
+                        <span className="text-gray-600">Recommended Flux:</span>
                         <span className="float-right font-medium">
-                          {lightingResults.volume} m³
+                          {lightingResults.recommendedFlux} lux
                         </span>
                       </div>
                       <div>
-                        <span className="text-gray-600">
-                          Occupancy Density:
-                        </span>
+                        <span className="text-gray-600">Number of Lamps:</span>
                         <span className="float-right font-medium">
-                          {lightingResults.occupancyDensity} people/m²
+                          {lightingResults.numberOfLamps}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Total Lumens:</span>
+                        <span className="float-right font-medium">
+                          {lightingResults.totalLumens} lumens
                         </span>
                       </div>
                     </div>
@@ -458,25 +409,28 @@ export default function Home() {
                       <div>
                         <span className="text-gray-600">Total Lumens:</span>
                         <span className="float-right font-medium">
-                          {lightingResults.totalLumens.toLocaleString()}
+                          {lightingResults.totalLumens}
                         </span>
                       </div>
                       <div>
                         <span className="text-gray-600">Total Watts:</span>
                         <span className="float-right font-medium">
-                          {lightingResults.totalWatts} W
+                          {/* Watts calculation would require lamp efficiency, which is not directly available here */}
+                          N/A
                         </span>
                       </div>
                       <div>
                         <span className="text-gray-600">Daily Energy:</span>
                         <span className="float-right font-medium">
-                          {lightingResults.dailyEnergy} kWh
+                          {/* Daily energy calculation would require lamp wattage and hours */}
+                          N/A
                         </span>
                       </div>
                       <div>
                         <span className="text-gray-600">Monthly Cost:</span>
                         <span className="float-right font-medium">
-                          ${lightingResults.monthlyCost}
+                          {/* Monthly cost calculation would require lamp wattage, hours, and electricity cost */}
+                          N/A
                         </span>
                       </div>
                     </div>
@@ -490,13 +444,15 @@ export default function Home() {
                       <div>
                         <span className="text-gray-600">Daylight Factor:</span>
                         <span className="float-right font-medium">
-                          {lightingResults.daylightFactor}%
+                          {/* Daylight factor calculation would require specific daylight data */}
+                          N/A
                         </span>
                       </div>
                       <div>
                         <span className="text-gray-600">Energy Savings:</span>
                         <span className="float-right font-medium">
-                          {lightingResults.naturalLightSavings}%
+                          {/* Energy savings calculation would require specific lighting systems */}
+                          N/A
                         </span>
                       </div>
                     </div>
