@@ -5,6 +5,7 @@ import Image from "next/image";
 interface LightingFormData {
   roomLength: string;
   roomWidth: string;
+  roomType: string;
   utilizationFactor: string;
   maintenanceFactor: string;
   selectedLamp: string;
@@ -22,6 +23,8 @@ interface HVACFormData {
 
 interface LightingResults {
   area: number;
+  roomType: string;
+  illuminance: number;
   recommendedFlux: number;
   numberOfLamps: number;
   totalLumens: number;
@@ -53,12 +56,31 @@ const lampOptions = [
   { name: "LED High Bay 150W", lumens: 18000 },
 ];
 
+// Room type illuminance requirements
+const roomTypeIlluminance = {
+  office: { name: "Offices", lux: 500 },
+  conference: { name: "Conference Rooms", lux: 500 },
+  boardroom: { name: "Board Rooms", lux: 400 },
+  corridor: { name: "Corridors/Lobbies", lux: 150 },
+  washroom: { name: "Washrooms/Toilets", lux: 200 },
+  printing: { name: "Printing/Copy Areas", lux: 400 },
+  server: { name: "Server/IT Rooms", lux: 300 },
+  storage: { name: "Storage Rooms", lux: 150 },
+  stairway: { name: "Stair ways", lux: 150 },
+  lactation: { name: "Lactation rooms", lux: 300 },
+  kitchen: { name: "Kitchens (Commercial)", lux: 500 },
+  laboratory: { name: "Laboratories", lux: 625 },
+  reception: { name: "Reception Areas", lux: 400 },
+  meeting: { name: "Meeting/Collaboration Spaces", lux: 400 },
+};
+
 export default function Home() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("lighting");
 
   const [lightingFormData, setLightingFormData] = useState<LightingFormData>({
     roomLength: "",
     roomWidth: "",
+    roomType: "office",
     utilizationFactor: "0.7",
     maintenanceFactor: "0.8",
     selectedLamp: "800",
@@ -102,6 +124,7 @@ export default function Home() {
     const {
       roomLength,
       roomWidth,
+      roomType,
       utilizationFactor,
       maintenanceFactor,
       selectedLamp,
@@ -116,8 +139,10 @@ export default function Home() {
     const UF = parseFloat(utilizationFactor);
     const MF = parseFloat(maintenanceFactor);
 
-    // Using office illuminance as default (500 lux)
-    const E = 500; // lux
+    // Get illuminance based on room type
+    const roomTypeData =
+      roomTypeIlluminance[roomType as keyof typeof roomTypeIlluminance];
+    const E = roomTypeData ? roomTypeData.lux : 500; // Default to 500 lux if room type not found
 
     // Calculate recommended flux using the formula: F = E * A / (UF * MF)
     const recommendedFlux = (E * area) / (UF * MF);
@@ -131,6 +156,8 @@ export default function Home() {
 
     setLightingResults({
       area: Math.round(area * 100) / 100,
+      roomType: roomTypeData ? roomTypeData.name : "Office",
+      illuminance: E,
       recommendedFlux: Math.round(recommendedFlux),
       numberOfLamps: numberOfLamps,
       totalLumens: totalLumens,
@@ -306,6 +333,24 @@ export default function Home() {
                 </div>
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Room Type
+                </label>
+                <select
+                  name="roomType"
+                  value={lightingFormData.roomType}
+                  onChange={handleLightingInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                >
+                  {Object.entries(roomTypeIlluminance).map(([key, value]) => (
+                    <option key={key} value={key}>
+                      {value.name} ({value.lux} lux)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -381,9 +426,31 @@ export default function Home() {
                         </span>
                       </div>
                       <div>
+                        <span className="text-gray-600">Room Type:</span>
+                        <span className="float-right font-medium">
+                          {lightingResults.roomType}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">
+                          Required Illuminance:
+                        </span>
+                        <span className="float-right font-medium">
+                          {lightingResults.illuminance} lux
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-blue-50 rounded-lg p-4">
+                    <h4 className="font-semibold text-gray-900 mb-3">
+                      Lighting Requirements
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
                         <span className="text-gray-600">Recommended Flux:</span>
                         <span className="float-right font-medium">
-                          {lightingResults.recommendedFlux} lux
+                          {lightingResults.recommendedFlux} lumens
                         </span>
                       </div>
                       <div>
@@ -396,63 +463,6 @@ export default function Home() {
                         <span className="text-gray-600">Total Lumens:</span>
                         <span className="float-right font-medium">
                           {lightingResults.totalLumens} lumens
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-blue-50 rounded-lg p-4">
-                    <h4 className="font-semibold text-gray-900 mb-3">
-                      Lighting Requirements
-                    </h4>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-600">Total Lumens:</span>
-                        <span className="float-right font-medium">
-                          {lightingResults.totalLumens}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Total Watts:</span>
-                        <span className="float-right font-medium">
-                          {/* Watts calculation would require lamp efficiency, which is not directly available here */}
-                          N/A
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Daily Energy:</span>
-                        <span className="float-right font-medium">
-                          {/* Daily energy calculation would require lamp wattage and hours */}
-                          N/A
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Monthly Cost:</span>
-                        <span className="float-right font-medium">
-                          {/* Monthly cost calculation would require lamp wattage, hours, and electricity cost */}
-                          N/A
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-amber-50 rounded-lg p-4">
-                    <h4 className="font-semibold text-gray-900 mb-3">
-                      Daylight Analysis
-                    </h4>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-600">Daylight Factor:</span>
-                        <span className="float-right font-medium">
-                          {/* Daylight factor calculation would require specific daylight data */}
-                          N/A
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Energy Savings:</span>
-                        <span className="float-right font-medium">
-                          {/* Energy savings calculation would require specific lighting systems */}
-                          N/A
                         </span>
                       </div>
                     </div>
