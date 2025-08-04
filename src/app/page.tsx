@@ -23,6 +23,7 @@ interface HVACFormData {
   insulationLevel: "poor" | "average" | "good" | "excellent";
   climateZone: "tropical" | "temperate" | "cold";
   location: string;
+  selectedACUnit: string;
 }
 
 interface LightingResults {
@@ -46,6 +47,10 @@ interface HVACResults {
   totalCoolingLoad: number;
   coolingLoadBTU: number;
   recommendedACSize: number;
+  // AC unit selection
+  numberOfACUnits: number;
+  selectedACUnitBTU: number;
+  selectedACUnitName: string;
   // Ventilation calculations
   ventilationByOccupancy: number;
   ventilationByACH: number;
@@ -101,6 +106,42 @@ const roomTypeIlluminance = {
   meeting: { name: "Meeting/Collaboration Spaces", lux: 400 },
 };
 
+// AC unit options with different BTU outputs
+const acUnitOptions = [
+  // LG High Wall Units
+  { name: "LG High Wall Unit 9,000 BTU", btu: 9000, type: "High Wall" },
+  { name: "LG High Wall Unit 12,000 BTU", btu: 12000, type: "High Wall" },
+  { name: "LG High Wall Unit 18,000 BTU", btu: 18000, type: "High Wall" },
+  { name: "LG High Wall Unit 24,000 BTU", btu: 24000, type: "High Wall" },
+  { name: "LG High Wall Unit 36,000 BTU", btu: 36000, type: "High Wall" },
+  // LG Ceiling Cassette Units
+  {
+    name: "LG Ceiling Cassette 24,000 BTU",
+    btu: 24000,
+    type: "Ceiling Cassette",
+  },
+  {
+    name: "LG Ceiling Cassette 36,000 BTU",
+    btu: 36000,
+    type: "Ceiling Cassette",
+  },
+  {
+    name: "LG Ceiling Cassette 48,000 BTU",
+    btu: 48000,
+    type: "Ceiling Cassette",
+  },
+  {
+    name: "LG Ceiling Cassette 60,000 BTU",
+    btu: 60000,
+    type: "Ceiling Cassette",
+  },
+  {
+    name: "LG Ceiling Cassette 72,000 BTU",
+    btu: 72000,
+    type: "Ceiling Cassette",
+  },
+];
+
 export default function Home() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("lighting");
 
@@ -125,6 +166,7 @@ export default function Home() {
     insulationLevel: "average",
     climateZone: "tropical",
     location: "",
+    selectedACUnit: "",
   });
 
   const [lightingResults, setLightingResults] =
@@ -205,6 +247,7 @@ export default function Home() {
       windowArea,
       windowOrientation,
       insulationLevel,
+      selectedACUnit,
     } = hvacFormData;
 
     if (!roomLength || !roomWidth || !roomHeight || !occupancy) {
@@ -296,6 +339,23 @@ export default function Home() {
       ventilationByACH
     );
 
+    // AC unit selection and calculation
+    let numberOfACUnits = 1;
+    let selectedACUnitBTU = 0;
+    let selectedACUnitName = "";
+
+    if (selectedACUnit) {
+      const selectedUnit = acUnitOptions.find(
+        (unit) => unit.name === selectedACUnit
+      );
+      if (selectedUnit) {
+        selectedACUnitBTU = selectedUnit.btu;
+        selectedACUnitName = selectedUnit.name;
+        // Calculate how many units are needed
+        numberOfACUnits = Math.ceil(coolingLoadBTU / selectedACUnitBTU);
+      }
+    }
+
     // Energy analysis
     const hvacEnergy = totalCoolingLoadKW * 8 * 30; // 8 hours/day, 30 days
     const hvacCost = hvacEnergy * 0.15; // $0.15 per kWh
@@ -335,6 +395,9 @@ export default function Home() {
       totalCoolingLoad: Math.round(totalCoolingLoadWithSafety * 100) / 100,
       coolingLoadBTU: Math.round(coolingLoadBTU),
       recommendedACSize: recommendedACSize,
+      numberOfACUnits: numberOfACUnits,
+      selectedACUnitBTU: selectedACUnitBTU,
+      selectedACUnitName: selectedACUnitName,
       ventilationByOccupancy: Math.round(ventilationByOccupancy),
       ventilationByACH: Math.round(ventilationByACH),
       recommendedVentilation: Math.round(recommendedVentilation),
@@ -784,6 +847,38 @@ export default function Home() {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Selected AC Unit
+                </label>
+                <select
+                  name="selectedACUnit"
+                  value={hvacFormData.selectedACUnit}
+                  onChange={handleHVACInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                >
+                  <option value="">Select an AC Unit</option>
+                  <optgroup label="LG High Wall Units">
+                    {acUnitOptions
+                      .filter((unit) => unit.type === "High Wall")
+                      .map((unit) => (
+                        <option key={unit.name} value={unit.name}>
+                          {unit.name} ({unit.btu.toLocaleString()} BTU)
+                        </option>
+                      ))}
+                  </optgroup>
+                  <optgroup label="LG Ceiling Cassette Units">
+                    {acUnitOptions
+                      .filter((unit) => unit.type === "Ceiling Cassette")
+                      .map((unit) => (
+                        <option key={unit.name} value={unit.name}>
+                          {unit.name} ({unit.btu.toLocaleString()} BTU)
+                        </option>
+                      ))}
+                  </optgroup>
+                </select>
+              </div>
+
               <button
                 onClick={calculateHVAC}
                 className="w-full bg-emerald-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-colors"
@@ -876,6 +971,52 @@ export default function Home() {
                       </div>
                     </div>
                   </div>
+
+                  {hvacResults.selectedACUnitName && (
+                    <div className="bg-purple-50 rounded-lg p-4">
+                      <h4 className="font-semibold text-gray-900 mb-3">
+                        AC Unit Selection
+                      </h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Selected Unit:</span>
+                          <span className="font-medium">
+                            {hvacResults.selectedACUnitName}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Unit Capacity:</span>
+                          <span className="font-medium">
+                            {hvacResults.selectedACUnitBTU.toLocaleString()}{" "}
+                            BTU/hr
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">
+                            Required Cooling:
+                          </span>
+                          <span className="font-medium">
+                            {hvacResults.coolingLoadBTU.toLocaleString()} BTU/hr
+                          </span>
+                        </div>
+                        <hr className="my-2" />
+                        <div className="flex justify-between font-semibold text-purple-600">
+                          <span>Number of Units Needed:</span>
+                          <span>{hvacResults.numberOfACUnits}</span>
+                        </div>
+                        <div className="flex justify-between font-semibold text-purple-600">
+                          <span>Total Capacity:</span>
+                          <span>
+                            {(
+                              hvacResults.numberOfACUnits *
+                              hvacResults.selectedACUnitBTU
+                            ).toLocaleString()}{" "}
+                            BTU/hr
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="bg-emerald-50 rounded-lg p-4">
                     <h4 className="font-semibold text-gray-900 mb-3">
