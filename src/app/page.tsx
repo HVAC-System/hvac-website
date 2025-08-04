@@ -16,9 +16,13 @@ interface HVACFormData {
   roomWidth: string;
   roomHeight: string;
   occupancy: string;
+  computers: string;
+  windowArea: string;
+  windowOrientation: "north" | "south" | "east" | "west";
   buildingType: "commercial" | "residential" | "industrial";
   insulationLevel: "poor" | "average" | "good" | "excellent";
   climateZone: "tropical" | "temperate" | "cold";
+  location: string;
 }
 
 interface LightingResults {
@@ -33,12 +37,35 @@ interface LightingResults {
 interface HVACResults {
   area: number;
   volume: number;
-  coolingLoad: number;
-  heatingLoad: number;
+  // Cooling load breakdown
+  occupantHeat: number;
+  computerHeat: number;
+  lightingHeat: number;
+  windowHeat: number;
+  envelopeHeat: number;
+  totalCoolingLoad: number;
+  coolingLoadBTU: number;
+  recommendedACSize: number;
+  // Ventilation calculations
+  ventilationByOccupancy: number;
+  ventilationByACH: number;
+  recommendedVentilation: number;
+  // Energy analysis
   hvacEnergy: number;
   hvacCost: number;
   energyEfficiency: number;
   carbonFootprint: number;
+  // Detailed calculations
+  calculations: {
+    occupantLoad: string;
+    computerLoad: string;
+    lightingLoad: string;
+    windowLoad: string;
+    envelopeLoad: string;
+    totalLoad: string;
+    ventilationOccupancy: string;
+    ventilationACH: string;
+  };
 }
 
 type ActiveTab = "lighting" | "hvac";
@@ -91,9 +118,13 @@ export default function Home() {
     roomWidth: "",
     roomHeight: "",
     occupancy: "",
+    computers: "",
+    windowArea: "",
+    windowOrientation: "south",
     buildingType: "commercial",
     insulationLevel: "average",
     climateZone: "tropical",
+    location: "",
   });
 
   const [lightingResults, setLightingResults] =
@@ -170,9 +201,10 @@ export default function Home() {
       roomWidth,
       roomHeight,
       occupancy,
-      buildingType,
+      computers,
+      windowArea,
+      windowOrientation,
       insulationLevel,
-      climateZone,
     } = hvacFormData;
 
     if (!roomLength || !roomWidth || !roomHeight || !occupancy) {
@@ -182,62 +214,135 @@ export default function Home() {
 
     const area = parseFloat(roomLength) * parseFloat(roomWidth);
     const volume = area * parseFloat(roomHeight);
+    const numOccupants = parseFloat(occupancy);
+    const numComputers = computers ? parseFloat(computers) : 0;
+    const windowAreaValue = windowArea ? parseFloat(windowArea) : 0;
 
-    // HVAC calculations based on building type and climate
+    // BS Standards HVAC Calculations
+
+    // 1. Heat gain from occupants (sensible heat only)
+    // BS EN 16798-1:2019 - Office activity: ~75W sensible heat per person
+    const occupantHeat = numOccupants * 75; // Watts
+
+    // 2. Heat gain from computers
+    // Standard office PC: ~300W per computer
+    const computerHeat = numComputers * 300; // Watts
+
+    // 3. Heat gain from lighting
+    // Assume 10W/m² for office lighting
+    const lightingHeat = area * 10; // Watts
+
+    // 4. Heat gain through window (solar gain)
+    // BS EN 12831 & BS EN 15255 simplified method
+    const solarGainFactors = {
+      north: 100, // W/m²
+      south: 200, // W/m² (tropical zones)
+      east: 150, // W/m²
+      west: 150, // W/m²
+    };
+    const solarGainFactor = solarGainFactors[windowOrientation];
+    const windowHeat = windowAreaValue * solarGainFactor; // Watts
+
+    // 5. Wall & roof gain (envelope gain)
+    // Simplified envelope gain estimate
     const insulationFactors = {
       poor: 1.5,
       average: 1.0,
       good: 0.7,
       excellent: 0.5,
     };
-
-    const climateFactors = {
-      tropical: { cooling: 1.2, heating: 0.3 },
-      temperate: { cooling: 0.8, heating: 0.8 },
-      cold: { cooling: 0.4, heating: 1.4 },
-    };
-
-    const buildingFactors = {
-      commercial: { cooling: 1.0, heating: 1.0 },
-      residential: { cooling: 0.8, heating: 1.2 },
-      industrial: { cooling: 1.3, heating: 0.9 },
-    };
-
     const insulation = insulationFactors[insulationLevel];
-    const climate = climateFactors[climateZone];
-    const building = buildingFactors[buildingType];
 
-    // Base loads per m²
-    const baseCoolingLoad = 0.1; // kW/m²
-    const baseHeatingLoad = 0.08; // kW/m²
-    const occupancyLoad = 0.1; // kW per person
+    // Wall area (excluding floor and ceiling)
+    const wallArea =
+      2 *
+      (parseFloat(roomLength) + parseFloat(roomWidth)) *
+      parseFloat(roomHeight);
+    const roofArea = area;
 
-    const coolingLoad =
-      area * baseCoolingLoad * climate.cooling * building.cooling * insulation +
-      parseFloat(occupancy) * occupancyLoad * 0.3;
+    // Envelope heat gain (simplified)
+    const wallHeat = wallArea * 5 * insulation; // 5 W/m² base
+    const roofHeat = roofArea * 10 * insulation; // 10 W/m² base
+    const envelopeHeat = wallHeat + roofHeat; // Watts
 
-    const heatingLoad =
-      area * baseHeatingLoad * climate.heating * building.heating * insulation +
-      parseFloat(occupancy) * occupancyLoad * 0.2;
+    // Total cooling load
+    const totalCoolingLoad =
+      occupantHeat + computerHeat + lightingHeat + windowHeat + envelopeHeat;
 
-    const hvacEnergy = (coolingLoad + heatingLoad) * 8 * 30; // 8 hours/day, 30 days
+    // Add 10% safety factor
+    const totalCoolingLoadWithSafety = totalCoolingLoad * 1.1;
+
+    // Convert to kW
+    const totalCoolingLoadKW = totalCoolingLoadWithSafety / 1000;
+
+    // Convert to BTU/hr
+    const coolingLoadBTU = totalCoolingLoadKW * 3412;
+
+    // Recommended AC size (next standard size up)
+    const recommendedACSize = Math.ceil(coolingLoadBTU / 1000) * 1000;
+
+    // Ventilation calculations (BS EN 16798-1:2019)
+    // Method 1: By occupancy
+    const ventilationByOccupancy = numOccupants * 10; // 10 L/s per person
+
+    // Method 2: Air changes per hour (ACH)
+    // Offices require 4-6 ACH (BS EN 13779)
+    const ach = 5; // 5 ACH for offices
+    const ventilationByACH = ((volume * ach) / 3600) * 1000; // Convert to L/s
+
+    // Use the higher of the two methods
+    const recommendedVentilation = Math.max(
+      ventilationByOccupancy,
+      ventilationByACH
+    );
+
+    // Energy analysis
+    const hvacEnergy = totalCoolingLoadKW * 8 * 30; // 8 hours/day, 30 days
     const hvacCost = hvacEnergy * 0.15; // $0.15 per kWh
-
-    // Energy efficiency rating (0-100)
     const energyEfficiency = Math.max(0, 100 - (insulation - 0.5) * 100);
-
-    // Carbon footprint (kg CO2/month)
     const carbonFootprint = hvacEnergy * 0.5; // 0.5 kg CO2 per kWh
+
+    // Detailed calculation strings for display
+    const calculations = {
+      occupantLoad: `${numOccupants} persons × 75W = ${occupantHeat}W`,
+      computerLoad: `${numComputers} computers × 300W = ${computerHeat}W`,
+      lightingLoad: `${area.toFixed(1)} m² × 10W/m² = ${lightingHeat}W`,
+      windowLoad: `${windowAreaValue} m² × ${solarGainFactor}W/m² = ${windowHeat}W`,
+      envelopeLoad: `Walls: ${wallArea.toFixed(
+        1
+      )} m² × 5W/m² × ${insulation} + Roof: ${roofArea.toFixed(
+        1
+      )} m² × 10W/m² × ${insulation} = ${envelopeHeat.toFixed(0)}W`,
+      totalLoad: `${occupantHeat} + ${computerHeat} + ${lightingHeat} + ${windowHeat} + ${envelopeHeat.toFixed(
+        0
+      )} = ${totalCoolingLoad.toFixed(
+        0
+      )}W × 1.1 = ${totalCoolingLoadWithSafety.toFixed(0)}W`,
+      ventilationOccupancy: `${numOccupants} persons × 10 L/s = ${ventilationByOccupancy} L/s`,
+      ventilationACH: `${volume.toFixed(
+        1
+      )} m³ × 5 ACH ÷ 3600 × 1000 = ${ventilationByACH.toFixed(0)} L/s`,
+    };
 
     setHVACResults({
       area: Math.round(area * 100) / 100,
       volume: Math.round(volume * 100) / 100,
-      coolingLoad: Math.round(coolingLoad * 100) / 100,
-      heatingLoad: Math.round(heatingLoad * 100) / 100,
+      occupantHeat: Math.round(occupantHeat),
+      computerHeat: Math.round(computerHeat),
+      lightingHeat: Math.round(lightingHeat),
+      windowHeat: Math.round(windowHeat),
+      envelopeHeat: Math.round(envelopeHeat),
+      totalCoolingLoad: Math.round(totalCoolingLoadWithSafety * 100) / 100,
+      coolingLoadBTU: Math.round(coolingLoadBTU),
+      recommendedACSize: recommendedACSize,
+      ventilationByOccupancy: Math.round(ventilationByOccupancy),
+      ventilationByACH: Math.round(ventilationByACH),
+      recommendedVentilation: Math.round(recommendedVentilation),
       hvacEnergy: Math.round(hvacEnergy),
       hvacCost: Math.round(hvacCost * 100) / 100,
       energyEfficiency: Math.round(energyEfficiency),
       carbonFootprint: Math.round(carbonFootprint),
+      calculations,
     });
   };
 
@@ -260,7 +365,7 @@ export default function Home() {
         </h1>
         <p className="text-lg text-gray-600 max-w-2xl">
           Professional tools for calculating lighting requirements and HVAC
-          systems for commercial and residential spaces.
+          systems for commercial and residential spaces using BS Standards.
         </p>
       </section>
 
@@ -500,7 +605,7 @@ export default function Home() {
       {activeTab === "hvac" && (
         <section className="w-full max-w-6xl bg-white rounded-2xl shadow-lg border border-gray-200 p-8">
           <h2 className="text-3xl font-bold text-gray-900 mb-8">
-            HVAC Design Tool
+            HVAC Design Tool (BS Standards)
           </h2>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -521,7 +626,7 @@ export default function Home() {
                     value={hvacFormData.roomLength}
                     onChange={handleHVACInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    placeholder="10"
+                    placeholder="3"
                   />
                 </div>
                 <div>
@@ -534,7 +639,7 @@ export default function Home() {
                     value={hvacFormData.roomWidth}
                     onChange={handleHVACInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    placeholder="8"
+                    placeholder="4"
                   />
                 </div>
               </div>
@@ -563,12 +668,57 @@ export default function Home() {
                     value={hvacFormData.occupancy}
                     onChange={handleHVACInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    placeholder="20"
+                    placeholder="3"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Number of Computers
+                  </label>
+                  <input
+                    type="number"
+                    name="computers"
+                    value={hvacFormData.computers}
+                    onChange={handleHVACInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    placeholder="3"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Window Area (m²)
+                  </label>
+                  <input
+                    type="number"
+                    name="windowArea"
+                    value={hvacFormData.windowArea}
+                    onChange={handleHVACInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    placeholder="1"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Window Orientation
+                  </label>
+                  <select
+                    name="windowOrientation"
+                    value={hvacFormData.windowOrientation}
+                    onChange={handleHVACInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  >
+                    <option value="north">North</option>
+                    <option value="south">South</option>
+                    <option value="east">East</option>
+                    <option value="west">West</option>
+                  </select>
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Building Type
@@ -584,6 +734,9 @@ export default function Home() {
                     <option value="industrial">Industrial</option>
                   </select>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Climate Zone
@@ -599,23 +752,36 @@ export default function Home() {
                     <option value="cold">Cold</option>
                   </select>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Insulation Level
+                  </label>
+                  <select
+                    name="insulationLevel"
+                    value={hvacFormData.insulationLevel}
+                    onChange={handleHVACInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  >
+                    <option value="poor">Poor</option>
+                    <option value="average">Average</option>
+                    <option value="good">Good</option>
+                    <option value="excellent">Excellent</option>
+                  </select>
+                </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Insulation Level
+                  Location (Optional)
                 </label>
-                <select
-                  name="insulationLevel"
-                  value={hvacFormData.insulationLevel}
+                <input
+                  type="text"
+                  name="location"
+                  value={hvacFormData.location}
                   onChange={handleHVACInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                >
-                  <option value="poor">Poor</option>
-                  <option value="average">Average</option>
-                  <option value="good">Good</option>
-                  <option value="excellent">Excellent</option>
-                </select>
+                  placeholder="Nairobi, Kenya"
+                />
               </div>
 
               <button
@@ -656,25 +822,87 @@ export default function Home() {
 
                   <div className="bg-blue-50 rounded-lg p-4">
                     <h4 className="font-semibold text-gray-900 mb-3">
-                      Load Calculations
+                      Cooling Load Breakdown (BS Standards)
                     </h4>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-600">Cooling Load:</span>
-                        <span className="float-right font-medium">
-                          {hvacResults.coolingLoad} kW
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Occupant Heat:</span>
+                        <span className="font-medium">
+                          {hvacResults.occupantHeat}W
                         </span>
                       </div>
-                      <div>
-                        <span className="text-gray-600">Heating Load:</span>
-                        <span className="float-right font-medium">
-                          {hvacResults.heatingLoad} kW
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Computer Heat:</span>
+                        <span className="font-medium">
+                          {hvacResults.computerHeat}W
                         </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Lighting Heat:</span>
+                        <span className="font-medium">
+                          {hvacResults.lightingHeat}W
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Window Heat:</span>
+                        <span className="font-medium">
+                          {hvacResults.windowHeat}W
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Envelope Heat:</span>
+                        <span className="font-medium">
+                          {hvacResults.envelopeHeat}W
+                        </span>
+                      </div>
+                      <hr className="my-2" />
+                      <div className="flex justify-between font-semibold">
+                        <span className="text-gray-800">
+                          Total Cooling Load:
+                        </span>
+                        <span className="text-blue-600">
+                          {hvacResults.totalCoolingLoad} kW
+                        </span>
+                      </div>
+                      <div className="flex justify-between font-semibold">
+                        <span className="text-gray-800">In BTU/hr:</span>
+                        <span className="text-blue-600">
+                          {hvacResults.coolingLoadBTU} BTU/hr
+                        </span>
+                      </div>
+                      <div className="flex justify-between font-semibold text-emerald-600">
+                        <span>Recommended AC Size:</span>
+                        <span>{hvacResults.recommendedACSize} BTU/hr</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="bg-emerald-50 rounded-lg p-4">
+                    <h4 className="font-semibold text-gray-900 mb-3">
+                      Ventilation System (BS EN 16798-1)
+                    </h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">By Occupancy:</span>
+                        <span className="font-medium">
+                          {hvacResults.ventilationByOccupancy} L/s
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">By ACH (5 ACH):</span>
+                        <span className="font-medium">
+                          {hvacResults.ventilationByACH} L/s
+                        </span>
+                      </div>
+                      <hr className="my-2" />
+                      <div className="flex justify-between font-semibold text-emerald-600">
+                        <span>Recommended Ventilation:</span>
+                        <span>{hvacResults.recommendedVentilation} L/s</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-orange-50 rounded-lg p-4">
                     <h4 className="font-semibold text-gray-900 mb-3">
                       Energy Analysis
                     </h4>
@@ -704,6 +932,47 @@ export default function Home() {
                         <span className="float-right font-medium">
                           {hvacResults.carbonFootprint} kg CO₂
                         </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-purple-50 rounded-lg p-4">
+                    <h4 className="font-semibold text-gray-900 mb-3">
+                      Detailed Calculations
+                    </h4>
+                    <div className="space-y-2 text-xs">
+                      <div className="text-gray-600">
+                        <strong>Occupant Load:</strong>{" "}
+                        {hvacResults.calculations.occupantLoad}
+                      </div>
+                      <div className="text-gray-600">
+                        <strong>Computer Load:</strong>{" "}
+                        {hvacResults.calculations.computerLoad}
+                      </div>
+                      <div className="text-gray-600">
+                        <strong>Lighting Load:</strong>{" "}
+                        {hvacResults.calculations.lightingLoad}
+                      </div>
+                      <div className="text-gray-600">
+                        <strong>Window Load:</strong>{" "}
+                        {hvacResults.calculations.windowLoad}
+                      </div>
+                      <div className="text-gray-600">
+                        <strong>Envelope Load:</strong>{" "}
+                        {hvacResults.calculations.envelopeLoad}
+                      </div>
+                      <div className="text-gray-600">
+                        <strong>Total Load:</strong>{" "}
+                        {hvacResults.calculations.totalLoad}
+                      </div>
+                      <hr className="my-2" />
+                      <div className="text-gray-600">
+                        <strong>Ventilation (Occupancy):</strong>{" "}
+                        {hvacResults.calculations.ventilationOccupancy}
+                      </div>
+                      <div className="text-gray-600">
+                        <strong>Ventilation (ACH):</strong>{" "}
+                        {hvacResults.calculations.ventilationACH}
                       </div>
                     </div>
                   </div>
