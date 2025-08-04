@@ -5,6 +5,7 @@ This file tracks development tasks, milestones, and implementation phases for th
 ## 🎯 Project Phases
 
 ### Phase 1: Foundation (Weeks 1-3) ✅
+
 - [x] Concept note approved
 - [x] Scope, user requirements, and system architecture defined
 - [x] BS standards reviewed (BS EN 12464-1:2021, ISO 50001, BS EN 16798-1:2019)
@@ -12,6 +13,7 @@ This file tracks development tasks, milestones, and implementation phases for th
 - [x] Initial database schema created
 
 ### Phase 2: Backend Development (Week 4)
+
 - [ ] Implement HVAC calculation engine
 - [ ] Develop lighting simulation algorithms
 - [ ] Create energy efficiency analysis modules
@@ -19,6 +21,7 @@ This file tracks development tasks, milestones, and implementation phases for th
 - [ ] Set up API endpoints for data exchange
 
 ### Phase 3: Frontend Development (Weeks 5-6)
+
 - [ ] Design and implement 3D building modeler
 - [ ] Create daylight simulation interface
 - [ ] Build HVAC system configuration UI
@@ -27,6 +30,7 @@ This file tracks development tasks, milestones, and implementation phases for th
 - [ ] Create analysis and reporting dashboard
 
 ### Phase 4: Integration & Testing (Week 7)
+
 - [ ] Integrate frontend with backend APIs
 - [ ] Implement real-time data synchronization
 - [ ] Test all calculation algorithms
@@ -35,6 +39,7 @@ This file tracks development tasks, milestones, and implementation phases for th
 - [ ] Performance optimization
 
 ### Phase 5: Documentation & Deployment (Week 8)
+
 - [ ] Complete user documentation
 - [ ] Create video tutorials
 - [ ] Prepare final demo presentation
@@ -44,6 +49,7 @@ This file tracks development tasks, milestones, and implementation phases for th
 ## 🔧 Technical Tasks
 
 ### Backend Development
+
 - [ ] Set up Python environment with required libraries
 - [ ] Implement thermal load calculations
 - [ ] Develop daylight analysis algorithms
@@ -52,6 +58,7 @@ This file tracks development tasks, milestones, and implementation phases for th
 - [ ] Design RESTful API architecture
 
 ### Frontend Development
+
 - [ ] Set up Next.js project structure
 - [ ] Implement 3D visualization with Three.js
 - [ ] Create responsive UI components
@@ -60,6 +67,7 @@ This file tracks development tasks, milestones, and implementation phases for th
 - [ ] Implement export functionality (PDF, Excel)
 
 ### Database & Data Management
+
 - [ ] Design database schema for building data
 - [ ] Integrate climate data APIs
 - [ ] Set up standards database
@@ -67,6 +75,7 @@ This file tracks development tasks, milestones, and implementation phases for th
 - [ ] Create data validation systems
 
 ### Testing & Quality Assurance
+
 - [ ] Unit tests for calculation engines
 - [ ] Integration tests for API endpoints
 - [ ] User acceptance testing
@@ -77,18 +86,21 @@ This file tracks development tasks, milestones, and implementation phases for th
 ## 📋 Ongoing Tasks
 
 ### Documentation
+
 - [ ] Update project documentation as development progresses
 - [ ] Create user guides and tutorials
 - [ ] Document API specifications
 - [ ] Maintain changelog with detailed entries
 
 ### Quality Assurance
+
 - [ ] Regular code reviews
 - [ ] Performance monitoring
 - [ ] Security audits
 - [ ] Accessibility testing
 
 ### Deployment & DevOps
+
 - [ ] Set up CI/CD pipeline
 - [ ] Configure production environment
 - [ ] Implement monitoring and logging
@@ -97,6 +109,7 @@ This file tracks development tasks, milestones, and implementation phases for th
 ## 🚀 Future Enhancements
 
 ### Advanced Features
+
 - [ ] Machine learning for optimization suggestions
 - [ ] Integration with BIM software
 - [ ] Mobile app development
@@ -104,12 +117,14 @@ This file tracks development tasks, milestones, and implementation phases for th
 - [ ] Advanced 3D visualization options
 
 ### Standards & Compliance
+
 - [ ] Support for additional international standards
 - [ ] Local building code integration
 - [ ] Certification and validation processes
 - [ ] Regulatory compliance reporting
 
 ### User Experience
+
 - [ ] Advanced user customization options
 - [ ] Multi-language support
 - [ ] Accessibility improvements

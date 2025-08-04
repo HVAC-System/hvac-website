@@ -2,26 +2,28 @@
 import { useState } from "react";
 import Image from "next/image";
 
-interface FormData {
+interface LightingFormData {
   roomLength: string;
   roomWidth: string;
   roomHeight: string;
   occupancy: string;
   activityLevel: "office" | "retail" | "industrial" | "educational";
-  buildingType: string;
-  location: string;
   windowArea: string;
   windowEfficiency: string;
 }
 
-interface HVACResults {
-  coolingLoad: number;
-  heatingLoad: number;
-  hvacEnergy: number;
-  hvacCost: number;
+interface HVACFormData {
+  roomLength: string;
+  roomWidth: string;
+  roomHeight: string;
+  occupancy: string;
+  buildingType: "commercial" | "residential" | "industrial";
+  location: string;
+  insulationLevel: "poor" | "average" | "good" | "excellent";
+  climateZone: "tropical" | "temperate" | "cold";
 }
 
-interface CalculationResults {
+interface LightingResults {
   area: number;
   volume: number;
   occupancyDensity: number;
@@ -32,30 +34,64 @@ interface CalculationResults {
   monthlyCost: number;
   daylightFactor: number;
   naturalLightSavings: number;
-  hvacResults: HVACResults | null;
 }
 
+interface HVACResults {
+  area: number;
+  volume: number;
+  coolingLoad: number;
+  heatingLoad: number;
+  hvacEnergy: number;
+  hvacCost: number;
+  energyEfficiency: number;
+  carbonFootprint: number;
+}
+
+type ActiveTab = "lighting" | "hvac";
+
 export default function Home() {
-  const [showHVAC, setShowHVAC] = useState(false);
-  const [formData, setFormData] = useState<FormData>({
+  const [activeTab, setActiveTab] = useState<ActiveTab>("lighting");
+
+  const [lightingFormData, setLightingFormData] = useState<LightingFormData>({
     roomLength: "",
     roomWidth: "",
     roomHeight: "",
     occupancy: "",
     activityLevel: "office",
-    buildingType: "commercial",
-    location: "nairobi",
     windowArea: "",
     windowEfficiency: "0.8",
   });
 
-  const [results, setResults] = useState<CalculationResults | null>(null);
+  const [hvacFormData, setHVACFormData] = useState<HVACFormData>({
+    roomLength: "",
+    roomWidth: "",
+    roomHeight: "",
+    occupancy: "",
+    buildingType: "commercial",
+    location: "nairobi",
+    insulationLevel: "average",
+    climateZone: "tropical",
+  });
 
-  const handleInputChange = (
+  const [lightingResults, setLightingResults] =
+    useState<LightingResults | null>(null);
+  const [hvacResults, setHVACResults] = useState<HVACResults | null>(null);
+
+  const handleLightingInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
+    setLightingFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleHVACInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setHVACFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
@@ -70,7 +106,7 @@ export default function Home() {
       activityLevel,
       windowArea,
       windowEfficiency,
-    } = formData;
+    } = lightingFormData;
 
     if (!roomLength || !roomWidth || !roomHeight || !occupancy) {
       alert("Please fill in all required fields");
@@ -109,24 +145,7 @@ export default function Home() {
     const naturalLightSavings =
       daylightFactor > 2 ? Math.min(daylightFactor * 0.5, 30) : 0;
 
-    // HVAC calculations if enabled
-    let hvacResults: HVACResults | null = null;
-    if (showHVAC) {
-      const coolingLoad =
-        area * 0.1 + parseFloat(occupancy) * 0.1 + totalWatts * 0.3;
-      const heatingLoad = area * 0.08 + parseFloat(occupancy) * 0.08;
-      const hvacEnergy = (coolingLoad + heatingLoad) * 8 * 30;
-      const hvacCost = hvacEnergy * 0.15;
-
-      hvacResults = {
-        coolingLoad: Math.round(coolingLoad * 100) / 100,
-        heatingLoad: Math.round(heatingLoad * 100) / 100,
-        hvacEnergy: Math.round(hvacEnergy),
-        hvacCost: Math.round(hvacCost * 100) / 100,
-      };
-    }
-
-    setResults({
+    setLightingResults({
       area: Math.round(area * 100) / 100,
       volume: Math.round(volume * 100) / 100,
       occupancyDensity: Math.round(occupancyDensity * 100) / 100,
@@ -137,7 +156,84 @@ export default function Home() {
       monthlyCost: Math.round(monthlyCost * 100) / 100,
       daylightFactor: Math.round(daylightFactor * 100) / 100,
       naturalLightSavings: Math.round(naturalLightSavings * 100) / 100,
-      hvacResults,
+    });
+  };
+
+  const calculateHVAC = () => {
+    const {
+      roomLength,
+      roomWidth,
+      roomHeight,
+      occupancy,
+      buildingType,
+      location,
+      insulationLevel,
+      climateZone,
+    } = hvacFormData;
+
+    if (!roomLength || !roomWidth || !roomHeight || !occupancy) {
+      alert("Please fill in all required fields");
+      return;
+    }
+
+    const area = parseFloat(roomLength) * parseFloat(roomWidth);
+    const volume = area * parseFloat(roomHeight);
+
+    // HVAC calculations based on building type and climate
+    const insulationFactors = {
+      poor: 1.5,
+      average: 1.0,
+      good: 0.7,
+      excellent: 0.5,
+    };
+
+    const climateFactors = {
+      tropical: { cooling: 1.2, heating: 0.3 },
+      temperate: { cooling: 0.8, heating: 0.8 },
+      cold: { cooling: 0.4, heating: 1.4 },
+    };
+
+    const buildingFactors = {
+      commercial: { cooling: 1.0, heating: 1.0 },
+      residential: { cooling: 0.8, heating: 1.2 },
+      industrial: { cooling: 1.3, heating: 0.9 },
+    };
+
+    const insulation = insulationFactors[insulationLevel];
+    const climate = climateFactors[climateZone];
+    const building = buildingFactors[buildingType];
+
+    // Base loads per m²
+    const baseCoolingLoad = 0.1; // kW/m²
+    const baseHeatingLoad = 0.08; // kW/m²
+    const occupancyLoad = 0.1; // kW per person
+
+    const coolingLoad =
+      area * baseCoolingLoad * climate.cooling * building.cooling * insulation +
+      parseFloat(occupancy) * occupancyLoad * 0.3;
+
+    const heatingLoad =
+      area * baseHeatingLoad * climate.heating * building.heating * insulation +
+      parseFloat(occupancy) * occupancyLoad * 0.2;
+
+    const hvacEnergy = (coolingLoad + heatingLoad) * 8 * 30; // 8 hours/day, 30 days
+    const hvacCost = hvacEnergy * 0.15; // $0.15 per kWh
+
+    // Energy efficiency rating (0-100)
+    const energyEfficiency = Math.max(0, 100 - (insulation - 0.5) * 100);
+
+    // Carbon footprint (kg CO2/month)
+    const carbonFootprint = hvacEnergy * 0.5; // 0.5 kg CO2 per kWh
+
+    setHVACResults({
+      area: Math.round(area * 100) / 100,
+      volume: Math.round(volume * 100) / 100,
+      coolingLoad: Math.round(coolingLoad * 100) / 100,
+      heatingLoad: Math.round(heatingLoad * 100) / 100,
+      hvacEnergy: Math.round(hvacEnergy),
+      hvacCost: Math.round(hvacCost * 100) / 100,
+      energyEfficiency: Math.round(energyEfficiency),
+      carbonFootprint: Math.round(carbonFootprint),
     });
   };
 
@@ -156,300 +252,523 @@ export default function Home() {
           />
         </div>
         <h1 className="text-4xl font-bold text-gray-900">
-          HVAC & Lighting Design Tool
+          HVAC & Lighting Design Tools
         </h1>
         <p className="text-lg text-gray-600 max-w-2xl">
-          Calculate lighting requirements and energy efficiency for commercial
-          spaces. Optional HVAC integration for complete building analysis.
+          Professional tools for calculating lighting requirements and HVAC
+          systems for commercial and residential spaces.
         </p>
       </section>
 
+      {/* Tab Navigation */}
+      <div className="w-full max-w-6xl">
+        <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+          <button
+            onClick={() => setActiveTab("lighting")}
+            className={`flex-1 py-3 px-6 rounded-md font-medium transition-colors ${
+              activeTab === "lighting"
+                ? "bg-white text-emerald-600 shadow-sm"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Lighting Design Tool
+          </button>
+          <button
+            onClick={() => setActiveTab("hvac")}
+            className={`flex-1 py-3 px-6 rounded-md font-medium transition-colors ${
+              activeTab === "hvac"
+                ? "bg-white text-emerald-600 shadow-sm"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            HVAC Design Tool
+          </button>
+        </div>
+      </div>
+
       {/* Lighting Design Tool */}
-      <section className="w-full max-w-6xl bg-white rounded-2xl shadow-lg border border-gray-200 p-8">
-        <div className="flex items-center justify-between mb-8">
-          <h2 className="text-3xl font-bold text-gray-900">
+      {activeTab === "lighting" && (
+        <section className="w-full max-w-6xl bg-white rounded-2xl shadow-lg border border-gray-200 p-8">
+          <h2 className="text-3xl font-bold text-gray-900 mb-8">
             Lighting Design Tool
           </h2>
-          <div className="flex items-center gap-3">
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-              <input
-                type="checkbox"
-                checked={showHVAC}
-                onChange={(e) => setShowHVAC(e.target.checked)}
-                className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
-              />
-              Include HVAC Calculations
-            </label>
-          </div>
-        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Input Form */}
-          <div className="space-y-6">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">
-              Building Parameters
-            </h3>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Input Form */}
+            <div className="space-y-6">
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                Building Parameters
+              </h3>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Room Length (m)
-                </label>
-                <input
-                  type="number"
-                  name="roomLength"
-                  value={formData.roomLength}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                  placeholder="10"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Room Length (m)
+                  </label>
+                  <input
+                    type="number"
+                    name="roomLength"
+                    value={lightingFormData.roomLength}
+                    onChange={handleLightingInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    placeholder="10"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Room Width (m)
+                  </label>
+                  <input
+                    type="number"
+                    name="roomWidth"
+                    value={lightingFormData.roomWidth}
+                    onChange={handleLightingInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    placeholder="8"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Room Width (m)
-                </label>
-                <input
-                  type="number"
-                  name="roomWidth"
-                  value={formData.roomWidth}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                  placeholder="8"
-                />
-              </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Room Height (m)
-                </label>
-                <input
-                  type="number"
-                  name="roomHeight"
-                  value={formData.roomHeight}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                  placeholder="3"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Room Height (m)
+                  </label>
+                  <input
+                    type="number"
+                    name="roomHeight"
+                    value={lightingFormData.roomHeight}
+                    onChange={handleLightingInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    placeholder="3"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Occupancy
+                  </label>
+                  <input
+                    type="number"
+                    name="occupancy"
+                    value={lightingFormData.occupancy}
+                    onChange={handleLightingInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    placeholder="20"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Occupancy
-                </label>
-                <input
-                  type="number"
-                  name="occupancy"
-                  value={formData.occupancy}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                  placeholder="20"
-                />
-              </div>
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Activity Level
-              </label>
-              <select
-                name="activityLevel"
-                value={formData.activityLevel}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-              >
-                <option value="office">Office</option>
-                <option value="retail">Retail</option>
-                <option value="industrial">Industrial</option>
-                <option value="educational">Educational</option>
-              </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Window Area (m²)
-                </label>
-                <input
-                  type="number"
-                  name="windowArea"
-                  value={formData.windowArea}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                  placeholder="12"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Window Efficiency
+                  Activity Level
                 </label>
                 <select
-                  name="windowEfficiency"
-                  value={formData.windowEfficiency}
-                  onChange={handleInputChange}
+                  name="activityLevel"
+                  value={lightingFormData.activityLevel}
+                  onChange={handleLightingInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 >
-                  <option value="0.6">60% (Single Glazed)</option>
-                  <option value="0.8">80% (Double Glazed)</option>
-                  <option value="0.9">90% (Triple Glazed)</option>
+                  <option value="office">Office</option>
+                  <option value="retail">Retail</option>
+                  <option value="industrial">Industrial</option>
+                  <option value="educational">Educational</option>
                 </select>
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Window Area (m²)
+                  </label>
+                  <input
+                    type="number"
+                    name="windowArea"
+                    value={lightingFormData.windowArea}
+                    onChange={handleLightingInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    placeholder="12"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Window Efficiency
+                  </label>
+                  <select
+                    name="windowEfficiency"
+                    value={lightingFormData.windowEfficiency}
+                    onChange={handleLightingInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  >
+                    <option value="0.6">60% (Single Glazed)</option>
+                    <option value="0.8">80% (Double Glazed)</option>
+                    <option value="0.9">90% (Triple Glazed)</option>
+                  </select>
+                </div>
+              </div>
+
+              <button
+                onClick={calculateLighting}
+                className="w-full bg-emerald-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-colors"
+              >
+                Calculate Lighting Design
+              </button>
             </div>
 
-            <button
-              onClick={calculateLighting}
-              className="w-full bg-emerald-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-colors"
-            >
-              Calculate Design
-            </button>
-          </div>
+            {/* Results Display */}
+            <div className="space-y-6">
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                Lighting Results
+              </h3>
 
-          {/* Results Display */}
-          <div className="space-y-6">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">
-              Results
-            </h3>
-
-            {results ? (
-              <div className="space-y-4">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="font-semibold text-gray-900 mb-3">
-                    Space Analysis
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-600">Floor Area:</span>
-                      <span className="float-right font-medium">
-                        {results.area} m²
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Volume:</span>
-                      <span className="float-right font-medium">
-                        {results.volume} m³
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Occupancy Density:</span>
-                      <span className="float-right font-medium">
-                        {results.occupancyDensity} people/m²
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-blue-50 rounded-lg p-4">
-                  <h4 className="font-semibold text-gray-900 mb-3">
-                    Lighting Requirements
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-600">Total Lumens:</span>
-                      <span className="float-right font-medium">
-                        {results.totalLumens.toLocaleString()}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Total Watts:</span>
-                      <span className="float-right font-medium">
-                        {results.totalWatts} W
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Daily Energy:</span>
-                      <span className="float-right font-medium">
-                        {results.dailyEnergy} kWh
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Monthly Cost:</span>
-                      <span className="float-right font-medium">
-                        ${results.monthlyCost}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-amber-50 rounded-lg p-4">
-                  <h4 className="font-semibold text-gray-900 mb-3">
-                    Daylight Analysis
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-600">Daylight Factor:</span>
-                      <span className="float-right font-medium">
-                        {results.daylightFactor}%
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Energy Savings:</span>
-                      <span className="float-right font-medium">
-                        {results.naturalLightSavings}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {showHVAC && results.hvacResults && (
-                  <div className="bg-emerald-50 rounded-lg p-4">
+              {lightingResults ? (
+                <div className="space-y-4">
+                  <div className="bg-gray-50 rounded-lg p-4">
                     <h4 className="font-semibold text-gray-900 mb-3">
-                      HVAC Analysis
+                      Space Analysis
                     </h4>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <span className="text-gray-600">Cooling Load:</span>
+                        <span className="text-gray-600">Floor Area:</span>
                         <span className="float-right font-medium">
-                          {results.hvacResults.coolingLoad} kW
+                          {lightingResults.area} m²
                         </span>
                       </div>
                       <div>
-                        <span className="text-gray-600">Heating Load:</span>
+                        <span className="text-gray-600">Volume:</span>
                         <span className="float-right font-medium">
-                          {results.hvacResults.heatingLoad} kW
+                          {lightingResults.volume} m³
                         </span>
                       </div>
                       <div>
-                        <span className="text-gray-600">Monthly Energy:</span>
+                        <span className="text-gray-600">
+                          Occupancy Density:
+                        </span>
                         <span className="float-right font-medium">
-                          {results.hvacResults.hvacEnergy} kWh
+                          {lightingResults.occupancyDensity} people/m²
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-blue-50 rounded-lg p-4">
+                    <h4 className="font-semibold text-gray-900 mb-3">
+                      Lighting Requirements
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-600">Total Lumens:</span>
+                        <span className="float-right font-medium">
+                          {lightingResults.totalLumens.toLocaleString()}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Total Watts:</span>
+                        <span className="float-right font-medium">
+                          {lightingResults.totalWatts} W
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Daily Energy:</span>
+                        <span className="float-right font-medium">
+                          {lightingResults.dailyEnergy} kWh
                         </span>
                       </div>
                       <div>
                         <span className="text-gray-600">Monthly Cost:</span>
                         <span className="float-right font-medium">
-                          ${results.hvacResults.hvacCost}
+                          ${lightingResults.monthlyCost}
                         </span>
                       </div>
                     </div>
                   </div>
-                )}
-              </div>
-            ) : (
-              <div className="bg-gray-50 rounded-lg p-8 text-center">
-                <svg
-                  width="48"
-                  height="48"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  className="mx-auto mb-4 text-gray-400"
-                >
-                  <path
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                <p className="text-gray-500">
-                  Enter building parameters and click &quot;Calculate
-                  Design&quot; to see results
-                </p>
-              </div>
-            )}
+
+                  <div className="bg-amber-50 rounded-lg p-4">
+                    <h4 className="font-semibold text-gray-900 mb-3">
+                      Daylight Analysis
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-600">Daylight Factor:</span>
+                        <span className="float-right font-medium">
+                          {lightingResults.daylightFactor}%
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Energy Savings:</span>
+                        <span className="float-right font-medium">
+                          {lightingResults.naturalLightSavings}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-gray-50 rounded-lg p-8 text-center">
+                  <svg
+                    width="48"
+                    height="48"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    className="mx-auto mb-4 text-gray-400"
+                  >
+                    <path
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <p className="text-gray-500">
+                    Enter building parameters and click &quot;Calculate Lighting
+                    Design&quot; to see results
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
+
+      {/* HVAC Design Tool */}
+      {activeTab === "hvac" && (
+        <section className="w-full max-w-6xl bg-white rounded-2xl shadow-lg border border-gray-200 p-8">
+          <h2 className="text-3xl font-bold text-gray-900 mb-8">
+            HVAC Design Tool
+          </h2>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Input Form */}
+            <div className="space-y-6">
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                Building Parameters
+              </h3>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Room Length (m)
+                  </label>
+                  <input
+                    type="number"
+                    name="roomLength"
+                    value={hvacFormData.roomLength}
+                    onChange={handleHVACInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    placeholder="10"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Room Width (m)
+                  </label>
+                  <input
+                    type="number"
+                    name="roomWidth"
+                    value={hvacFormData.roomWidth}
+                    onChange={handleHVACInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    placeholder="8"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Room Height (m)
+                  </label>
+                  <input
+                    type="number"
+                    name="roomHeight"
+                    value={hvacFormData.roomHeight}
+                    onChange={handleHVACInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    placeholder="3"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Occupancy
+                  </label>
+                  <input
+                    type="number"
+                    name="occupancy"
+                    value={hvacFormData.occupancy}
+                    onChange={handleHVACInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    placeholder="20"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Building Type
+                  </label>
+                  <select
+                    name="buildingType"
+                    value={hvacFormData.buildingType}
+                    onChange={handleHVACInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  >
+                    <option value="commercial">Commercial</option>
+                    <option value="residential">Residential</option>
+                    <option value="industrial">Industrial</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Climate Zone
+                  </label>
+                  <select
+                    name="climateZone"
+                    value={hvacFormData.climateZone}
+                    onChange={handleHVACInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  >
+                    <option value="tropical">Tropical</option>
+                    <option value="temperate">Temperate</option>
+                    <option value="cold">Cold</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Insulation Level
+                </label>
+                <select
+                  name="insulationLevel"
+                  value={hvacFormData.insulationLevel}
+                  onChange={handleHVACInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                >
+                  <option value="poor">Poor</option>
+                  <option value="average">Average</option>
+                  <option value="good">Good</option>
+                  <option value="excellent">Excellent</option>
+                </select>
+              </div>
+
+              <button
+                onClick={calculateHVAC}
+                className="w-full bg-emerald-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-colors"
+              >
+                Calculate HVAC Design
+              </button>
+            </div>
+
+            {/* Results Display */}
+            <div className="space-y-6">
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                HVAC Results
+              </h3>
+
+              {hvacResults ? (
+                <div className="space-y-4">
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h4 className="font-semibold text-gray-900 mb-3">
+                      Space Analysis
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-600">Floor Area:</span>
+                        <span className="float-right font-medium">
+                          {hvacResults.area} m²
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Volume:</span>
+                        <span className="float-right font-medium">
+                          {hvacResults.volume} m³
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-blue-50 rounded-lg p-4">
+                    <h4 className="font-semibold text-gray-900 mb-3">
+                      Load Calculations
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-600">Cooling Load:</span>
+                        <span className="float-right font-medium">
+                          {hvacResults.coolingLoad} kW
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Heating Load:</span>
+                        <span className="float-right font-medium">
+                          {hvacResults.heatingLoad} kW
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-emerald-50 rounded-lg p-4">
+                    <h4 className="font-semibold text-gray-900 mb-3">
+                      Energy Analysis
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-600">Monthly Energy:</span>
+                        <span className="float-right font-medium">
+                          {hvacResults.hvacEnergy} kWh
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Monthly Cost:</span>
+                        <span className="float-right font-medium">
+                          ${hvacResults.hvacCost}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">
+                          Energy Efficiency:
+                        </span>
+                        <span className="float-right font-medium">
+                          {hvacResults.energyEfficiency}%
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Carbon Footprint:</span>
+                        <span className="float-right font-medium">
+                          {hvacResults.carbonFootprint} kg CO₂
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-gray-50 rounded-lg p-8 text-center">
+                  <svg
+                    width="48"
+                    height="48"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    className="mx-auto mb-4 text-gray-400"
+                  >
+                    <path
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <p className="text-gray-500">
+                    Enter building parameters and click &quot;Calculate HVAC
+                    Design&quot; to see results
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
